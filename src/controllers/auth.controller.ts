@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import UserModel from "../models/user.model";
 import * as bcrypt from "bcrypt";
 import { decode, sign } from "jsonwebtoken";
+import { populate } from "dotenv";
 const SignUpUser = async (req: Request, res: Response) => {
   try {
     const { email, password } = req.body;
@@ -70,9 +71,23 @@ const getAllUsers = async (req: Request, res: Response) => {
       "_id",
       "name",
       "email",
+      "following",
+      "followers",
+      "posts",
+      "profile"
     ]);
+    const data = await UserModel.findOne({ email })
+      .populate({
+        path: "following",
+        select: "_id",
+      })
+      .select("following");
 
-    res.status(200).send({ users: record, message: "success" });
+    const followingArray = data?.following.map((item) => item._id);
+
+    res
+      .status(200)
+      .send({ users: record, following: followingArray, message: "success" });
   } catch (error) {
     res.status(500).send({ message: "Error Occured , Please Try Again!" });
   }
@@ -92,11 +107,26 @@ const getAllFollowers = async (req: Request, res: Response) => {
     const record = await UserModel.findOne({ email })
       .populate({
         path: "followers",
-        select: "_id name email",
+        select: "_id name email followers following posts profile",
       })
       .select("following");
 
-    res.status(200).send({ followers: record?.followers, message: "success" });
+    const data = await UserModel.findOne({ email })
+      .populate({
+        path: "following",
+        select: "_id",
+      })
+      .select("following");
+
+    const followingArray = data?.following.map((item) => item._id);
+
+    res
+      .status(200)
+      .send({
+        followers: record?.followers,
+        following: followingArray,
+        message: "success",
+      });
   } catch (error) {
     res.status(500).send({ message: "Error Occured , Please Try Again!" });
   }
@@ -116,7 +146,7 @@ const getAllFollowing = async (req: Request, res: Response) => {
     const record = await UserModel.findOne({ email })
       .populate({
         path: "following",
-        select: "_id name email",
+        select: "_id name email followers following posts profile",
       })
       .select("following");
 
@@ -146,13 +176,10 @@ const follow = async (req: Request, res: Response) => {
       return;
     }
 
-
-
-    if(user?.following?.includes(userIdToBeFollowed)){
+    if (user?.following?.includes(userIdToBeFollowed)) {
       res.status(409).send({ message: "Already Followed" });
       return;
     }
-
 
     await UserModel.updateOne(
       { email },
@@ -186,6 +213,7 @@ const getAccountStats = async (req: Request, res: Response) => {
       {
         $project: {
           name: 1,
+          profile:1,
           followersCount: { $size: "$followers" },
           followingCount: { $size: "$following" },
           postsCount: { $size: "$posts" },
@@ -211,17 +239,41 @@ const getFeed = async (req: Request, res: Response) => {
     }
 
     const record = await UserModel.findOne({ email })
+      .select("following -_id posts")
+      .populate({
+        path: "posts",
+        select: "name  content createdAt",
+        populate: {
+          path: "userId",
+          select: "name _id profile",
+        },
+      })
       .populate({
         path: "following",
-        select: "_id name email posts",
+        select: "posts -_id",
         populate: {
           path: "posts",
-          select: "content",
+          select: "content useId createdAt",
+          populate: {
+            path: "userId",
+            select: "name _id profile",
+          },
         },
       })
       .select("following");
 
-    res.status(200).send({ feed: record, message: "success" });
+    let mergedAsFeed: any = [];
+    record?.following.forEach((eachPostsArray: any) => {
+      mergedAsFeed.push(...eachPostsArray.posts);
+    });
+    mergedAsFeed = [...mergedAsFeed, ...(record?.posts as any)];
+
+    const sortedFeed = mergedAsFeed.sort(
+      (a: any, b: any) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+
+    res.status(200).send({ feed: sortedFeed, message: "success" });
   } catch (error) {
     res.status(500).send({ message: "Error Occured , Please Try Again!" });
   }

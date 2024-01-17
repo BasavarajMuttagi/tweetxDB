@@ -96,9 +96,11 @@ const getAllPosts = async (req: Request, res: Response) => {
       const record = await UserModel.findOne({ email })
         .populate({
           path: "posts",
-          options: { sort: { createdAt: -1 }, populate: { path: "userId" } },
+          options: { sort: { createdAt: -1 }, populate: { path: "userId" ,select:"-password"} },
         })
         .select("posts");
+
+
 
       res.status(200).send({ message: "Success", posts: record?.posts });
     }
@@ -106,5 +108,6 @@ const getAllPosts = async (req: Request, res: Response) => {
     res.status(500).send({ message: "Error Occured , Please Try Again!" });
   }
 };
+
 
 export { createNewPost, updatePost, deletePost, getAllPosts };

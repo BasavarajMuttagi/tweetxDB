@@ -1,4 +1,5 @@
 import { Schema, model } from "mongoose";
+import { string } from "zod";
 
 const userSignUpSchema = new Schema(
   {
@@ -8,6 +9,11 @@ const userSignUpSchema = new Schema(
     followers: [{ type: Schema.Types.ObjectId, ref: "User" }],
     following: [{ type: Schema.Types.ObjectId, ref: "User" }],
     posts: [{ type: Schema.Types.ObjectId, ref: "Post", default: [] }],
+    profile: {
+      type: String,
+      default:
+        "https://upload.wikimedia.org/wikipedia/commons/1/1e/Default-avatar.jpg",
+    },
   },
   { timestamps: true }
 );
