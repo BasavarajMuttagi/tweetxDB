@@ -89,7 +89,7 @@ const getAllPosts = async (req: Request, res: Response) => {
     }
 
     if (user.posts.length == 0) {
-      res.status(409).send({ posts: [], message: "Not Post Found!" });
+      res.status(200).send({ posts: [], message: "Not Post Found!" });
       return;
     }
     if (user && user.posts.length > 0) {
