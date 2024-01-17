@@ -9,6 +9,7 @@ import {
   getAllFollowing,
   getAllUsers,
   getFeed,
+  unfollow,
 } from "../controllers/auth.controller";
 import {
   userLoginSchema,
@@ -26,5 +27,7 @@ AuthRouter.get("/following", validateToken, getAllFollowing);
 AuthRouter.post("/follow", validateToken, follow);
 AuthRouter.get("/getstats",validateToken,getAccountStats)
 AuthRouter.get("/feed",validateToken,getFeed)
+AuthRouter.post("/unfollow",validateToken,unfollow)
+
 
 export { AuthRouter };

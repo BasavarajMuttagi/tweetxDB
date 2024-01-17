@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 
 import UserModel from "../models/user.model";
 import PostModel from "../models/post.model";
+import { date } from "zod";
 
 const createNewPost = async (req: Request, res: Response) => {
   try {
@@ -81,7 +82,6 @@ const getAllPosts = async (req: Request, res: Response) => {
       user: { email, userId },
     } = req.body;
 
-
     const user = await UserModel.findOne({ email });
     if (!user) {
       res.status(409).send({ message: "User Not Found!" });
@@ -89,12 +89,15 @@ const getAllPosts = async (req: Request, res: Response) => {
     }
 
     if (user.posts.length == 0) {
-      res.status(409).send({ posts:[] ,message: "Not Post Found!" });
+      res.status(409).send({ posts: [], message: "Not Post Found!" });
       return;
     }
     if (user && user.posts.length > 0) {
       const record = await UserModel.findOne({ email })
-        .populate("posts")
+        .populate({
+          path: "posts",
+          options: { sort: { createdAt: -1 }, populate: { path: "userId" } },
+        })
         .select("posts");
 
       res.status(200).send({ message: "Success", posts: record?.posts });

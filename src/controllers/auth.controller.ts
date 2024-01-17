@@ -146,6 +146,14 @@ const follow = async (req: Request, res: Response) => {
       return;
     }
 
+
+
+    if(user?.following?.includes(userIdToBeFollowed)){
+      res.status(409).send({ message: "Already Followed" });
+      return;
+    }
+
+
     await UserModel.updateOne(
       { email },
       { $push: { following: userIdToBeFollowed } }
@@ -157,29 +165,6 @@ const follow = async (req: Request, res: Response) => {
     );
 
     res.status(200).send({ message: "success" });
-  } catch (error) {
-    res.status(500).send({ message: "Error Occured , Please Try Again!" });
-  }
-};
-
-const unfollow = async (req: Request, res: Response) => {
-  try {
-    const {
-      user: { email, userId },
-    } = req.body;
-    const user = await UserModel.findOne({ email });
-    if (!user) {
-      res.status(409).send({ message: "User Not Found!" });
-      return;
-    }
-
-    const record = await UserModel.find({ _id: { $ne: userId } }).select([
-      "_id",
-      "name",
-      "email",
-    ]);
-
-    res.status(200).send({ users: record, message: "success" });
   } catch (error) {
     res.status(500).send({ message: "Error Occured , Please Try Again!" });
   }
@@ -200,6 +185,7 @@ const getAccountStats = async (req: Request, res: Response) => {
       { $match: { email } },
       {
         $project: {
+          name: 1,
           followersCount: { $size: "$followers" },
           followingCount: { $size: "$following" },
           postsCount: { $size: "$posts" },
@@ -225,19 +211,53 @@ const getFeed = async (req: Request, res: Response) => {
     }
 
     const record = await UserModel.findOne({ email })
-    .populate({
-      path: "following",
-      select: "_id name email posts",
-      populate: {
-        path: "posts", 
-        select: "content",
-      },
-    })
-    .select("following");
-
-    
+      .populate({
+        path: "following",
+        select: "_id name email posts",
+        populate: {
+          path: "posts",
+          select: "content",
+        },
+      })
+      .select("following");
 
     res.status(200).send({ feed: record, message: "success" });
+  } catch (error) {
+    res.status(500).send({ message: "Error Occured , Please Try Again!" });
+  }
+};
+
+const unfollow = async (req: Request, res: Response) => {
+  try {
+    const {
+      userIdToBeUnFollowed,
+      user: { email, userId },
+    } = req.body;
+    const user = await UserModel.findOne({ email });
+    if (!user) {
+      res.status(409).send({ message: "User Not Found!" });
+      return;
+    }
+    const RecordOfUserIdToBeUnFollowed = await UserModel.findOne({
+      _id: userIdToBeUnFollowed,
+    });
+
+    if (!RecordOfUserIdToBeUnFollowed) {
+      res.status(409).send({ message: "User Not Found!" });
+      return;
+    }
+
+    await UserModel.updateOne(
+      { email },
+      { $pull: { following: userIdToBeUnFollowed } }
+    );
+
+    await UserModel.updateOne(
+      { _id: userIdToBeUnFollowed },
+      { $pull: { followers: userId } }
+    );
+
+    res.status(200).send({ message: "success" });
   } catch (error) {
     res.status(500).send({ message: "Error Occured , Please Try Again!" });
   }
@@ -251,5 +271,6 @@ export {
   getAllFollowing,
   follow,
   getAccountStats,
-  getFeed
+  getFeed,
+  unfollow,
 };
